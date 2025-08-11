@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Black Hole Simulation</title>
+<style>
+  body {
+    background-color: black;
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    color: white;
+  }
+  #controls {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(20, 20, 20, 0.85);
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  label {
+    display: block;
+    margin-top: 6px;
+  }
+  input[type=range] {
+    width: 200px;
+  }
+  button {
+    margin-top: 10px;
+    padding: 5px 10px;
+    background: #444;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #666;
+  }
+</style>
+</head>
+<body>
+<canvas id="simCanvas"></canvas>
+
+<div id="controls">
+  <label>Black Hole Mass: <span id="massVal">1000</span>
+    <input type="range" id="massSlider" min="500" max="3000" value="1000" step="50">
+  </label>
+  <label>Speed of Light: <span id="cVal">15</span>
+    <input type="range" id="cSlider" min="5" max="30" value="15" step="1">
+  </label>
+  <label>Time Step: <span id="dtVal">0.1</span>
+    <input type="range" id="dtSlider" min="0.05" max="0.5" value="0.1" step="0.01">
+  </label>
+  <button id="resetBtn">Reset Simulation</button>
+</div>
+
+<script>
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Default parameters
+let G = 1.0;
+let M = 1000;
+let C = 15;
+let timeStep = 0.1;
+
+class Particle {
+    constructor(x, y, vx, vy, isPhoton=false) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.isPhoton = isPhoton;
+        this.path = [];
+        this.isCaptured = false;
+    }
+    update() {
+        if (this.isCaptured) return;
+        let dx = -this.x;
+        let dy = -this.y;
+        let r = Math.sqrt(dx*dx + dy*dy);
+        let schwarzschildRadius = (2 * G * M) / (C * C);
+
+        if (r < schwarzschildRadius) {
+            this.isCaptured = true;
+            return;
+        }
+        let force = (G * M) / (r * r);
+        let ax = force * dx / r;
+        let ay = force * dy / r;
+        this.vx += ax * timeStep;
+        this.vy += ay * timeStep;
+
+        if (this.isPhoton) {
+            let vMag = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+            this.vx = (this.vx / vMag) * C;
+            this.vy = (this.vy / vMag) * C;
+        }
+        this.x += this.vx * timeStep;
+        this.y += this.vy * timeStep;
+        this.path.push({x: this.x, y: this.y});
+        if (this.path.length > 300) this.path.shift();
+    }
+    draw() {
+        ctx.strokeStyle = this.isPhoton ? 'yellow' : 'cyan';
+        ctx.beginPath();
+        for (let i = 0; i < this.path.length; i++) {
+            let px = canvas.width/2 + this.path[i].x;
+            let py = canvas.height/2 + this.path[i].y;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.fillStyle = this.isPhoton ? 'yellow' : 'cyan';
+        ctx.beginPath();
+        ctx.arc(canvas.width/2 + this.x, canvas.height/2 + this.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+let particles;
+function resetParticles() {
+    let schwarzschildRadius = (2 * G * M) / (C * C);
+    particles = [
+        new Particle(100, 0, 0, 7.5),
+        new Particle(-110, 0, 0, -7.0),
+        new Particle(0, 130, -6.5, 0),
+        new Particle(0, -140, 6.0, 0),
+        new Particle(-250, 50, 7, 0),
+        new Particle(-250, schwarzschildRadius * 1.5, C, 0, true),
+        new Particle(-250, schwarzschildRadius * 0.8, C, 0, true)
+    ];
+}
+resetParticles();
+
+function drawBlackHole() {
+    let schwarzschildRadius = (2 * G * M) / (C * C);
+    ctx.fillStyle = 'black';
+    ctx.beginPath();
+    ctx.arc(canvas.width/2, canvas.height/2, schwarzschildRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'red';
+    ctx.beginPath();
+    ctx.arc(canvas.width/2, canvas.height/2, schwarzschildRadius, 0, Math.PI * 2);
+    ctx.stroke();
+}
+
+function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBlackHole();
+    particles.forEach(p => {
+        p.update();
+        p.draw();
+    });
+    requestAnimationFrame(loop);
+}
+loop();
+
+// UI bindings
+document.getElementById('massSlider').addEventListener('input', e => {
+    M = parseFloat(e.target.value);
+    document.getElementById('massVal').innerText = M;
+});
+document.getElementById('cSlider').addEventListener('input', e => {
+    C = parseFloat(e.target.value);
+    document.getElementById('cVal').innerText = C;
+});
+document.getElementById('dtSlider').addEventListener('input', e => {
+    timeStep = parseFloat(e.target.value);
+    document.getElementById('dtVal').innerText = timeStep;
+});
+document.getElementById('resetBtn').addEventListener('click', () => {
+    resetParticles();
+});
+</script>
+</body>
+</html>
