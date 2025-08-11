@@ -1,181 +1,79 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Black Hole Simulation</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Black Hole — Ray-bending demo</title>
+
+<!-- Three.js from CDN -->
+<script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
+
 <style>
-  body {
-    background-color: black;
-    margin: 0;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-    color: white;
+  :root {
+    --panel-bg: rgba(12,12,14,0.85);
+    --muted: #bdbdbd;
   }
+  html,body { height:100%; margin:0; background:#000; color:#eee; font-family: Inter, system-ui, Arial, sans-serif; }
+  #webgl { width:100vw; height:100vh; display:block; position:fixed; left:0; top:0; }
+  #overlay { position:fixed; left:0; top:0; pointer-events:none; width:100vw; height:100vh; }
   #controls {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: rgba(20, 20, 20, 0.85);
-    padding: 10px;
+    position: fixed;
+    left: 12px;
+    top: 12px;
+    background: var(--panel-bg);
+    padding: 12px;
     border-radius: 8px;
-    font-size: 14px;
+    z-index: 10;
+    max-width: 340px;
+    font-size: 13px;
+    color:var(--muted);
   }
-  label {
-    display: block;
-    margin-top: 6px;
-  }
-  input[type=range] {
-    width: 200px;
-  }
-  button {
-    margin-top: 10px;
-    padding: 5px 10px;
-    background: #444;
-    color: white;
-    border: none;
-    cursor: pointer;
-  }
-  button:hover {
-    background: #666;
-  }
+  label { display:block; margin:6px 0 2px; color:#ddd; font-size:13px; }
+  input[type=range] { width: 220px; }
+  .btn { margin-top:8px; padding:6px 10px; border-radius:6px; border:none; background:#222; color:#fff; cursor:pointer; }
+  .btn:hover { background:#333; }
+  .row { display:flex; gap:8px; margin-top:8px; }
+  footer { position: fixed; right: 12px; bottom: 12px; color:#999; font-size:12px; background:rgba(0,0,0,0.45); padding:8px 10px; border-radius:8px; }
+  @media (max-width:520px) { #controls { left:50%; transform:translateX(-50%); top:8px; max-width: calc(100vw - 24px); } }
 </style>
 </head>
 <body>
-<canvas id="simCanvas"></canvas>
+<!-- Three.js canvas -->
+<div id="webgl"></div>
 
-<div id="controls">
-  <label>Black Hole Mass: <span id="massVal">1000</span>
-    <input type="range" id="massSlider" min="500" max="3000" value="1000" step="50">
-  </label>
-  <label>Speed of Light: <span id="cVal">15</span>
-    <input type="range" id="cSlider" min="5" max="30" value="15" step="1">
-  </label>
-  <label>Time Step: <span id="dtVal">0.1</span>
-    <input type="range" id="dtSlider" min="0.05" max="0.5" value="0.1" step="0.01">
-  </label>
-  <button id="resetBtn">Reset Simulation</button>
+<!-- 2D overlay for particle drawing -->
+<canvas id="overlay"></canvas>
+
+<!-- Controls -->
+<div id="controls" aria-label="Simulation controls">
+  <div style="font-weight:600; color:#fff; margin-bottom:6px;">Black Hole Simulation (Three.js + GLSL)</div>
+
+  <label>Black Hole Mass: <span id="massVal">1000</span></label>
+  <input id="massSlider" type="range" min="200" max="5000" step="50" value="1000">
+
+  <label>Speed of Light (sim): <span id="cVal">15</span></label>
+  <input id="cSlider" type="range" min="5" max="60" step="1" value="15">
+
+  <label>Time Step: <span id="dtVal">0.10</span></label>
+  <input id="dtSlider" type="range" min="0.02" max="0.30" step="0.01" value="0.10">
+
+  <label>Trail length: <span id="trailVal">300</span></label>
+  <input id="trailSlider" type="range" min="20" max="2000" step="10" value="300">
+
+  <div class="row">
+    <button id="pauseBtn" class="btn">Pause</button>
+    <button id="resetBtn" class="btn">Reset</button>
+    <button id="spawnBtn" class="btn">Spawn Photon</button>
+  </div>
+
+  <div style="margin-top:8px; font-size:12px; color:#bbb;">
+    Note: shader uses a visual ray-bending approximation; particles use Newtonian gravity for parity with the Python sim.
+  </div>
 </div>
 
-<script>
-const canvas = document.getElementById('simCanvas');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+<footer>Particles: <span id="count">0</span></footer>
 
-// Default parameters
-let G = 1.0;
-let M = 1000;
-let C = 15;
-let timeStep = 0.1;
-
-class Particle {
-    constructor(x, y, vx, vy, isPhoton=false) {
-        this.x = x;
-        this.y = y;
-        this.vx = vx;
-        this.vy = vy;
-        this.isPhoton = isPhoton;
-        this.path = [];
-        this.isCaptured = false;
-    }
-    update() {
-        if (this.isCaptured) return;
-        let dx = -this.x;
-        let dy = -this.y;
-        let r = Math.sqrt(dx*dx + dy*dy);
-        let schwarzschildRadius = (2 * G * M) / (C * C);
-
-        if (r < schwarzschildRadius) {
-            this.isCaptured = true;
-            return;
-        }
-        let force = (G * M) / (r * r);
-        let ax = force * dx / r;
-        let ay = force * dy / r;
-        this.vx += ax * timeStep;
-        this.vy += ay * timeStep;
-
-        if (this.isPhoton) {
-            let vMag = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-            this.vx = (this.vx / vMag) * C;
-            this.vy = (this.vy / vMag) * C;
-        }
-        this.x += this.vx * timeStep;
-        this.y += this.vy * timeStep;
-        this.path.push({x: this.x, y: this.y});
-        if (this.path.length > 300) this.path.shift();
-    }
-    draw() {
-        ctx.strokeStyle = this.isPhoton ? 'yellow' : 'cyan';
-        ctx.beginPath();
-        for (let i = 0; i < this.path.length; i++) {
-            let px = canvas.width/2 + this.path[i].x;
-            let py = canvas.height/2 + this.path[i].y;
-            if (i === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-        }
-        ctx.stroke();
-        ctx.fillStyle = this.isPhoton ? 'yellow' : 'cyan';
-        ctx.beginPath();
-        ctx.arc(canvas.width/2 + this.x, canvas.height/2 + this.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-    }
-}
-
-let particles;
-function resetParticles() {
-    let schwarzschildRadius = (2 * G * M) / (C * C);
-    particles = [
-        new Particle(100, 0, 0, 7.5),
-        new Particle(-110, 0, 0, -7.0),
-        new Particle(0, 130, -6.5, 0),
-        new Particle(0, -140, 6.0, 0),
-        new Particle(-250, 50, 7, 0),
-        new Particle(-250, schwarzschildRadius * 1.5, C, 0, true),
-        new Particle(-250, schwarzschildRadius * 0.8, C, 0, true)
-    ];
-}
-resetParticles();
-
-function drawBlackHole() {
-    let schwarzschildRadius = (2 * G * M) / (C * C);
-    ctx.fillStyle = 'black';
-    ctx.beginPath();
-    ctx.arc(canvas.width/2, canvas.height/2, schwarzschildRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'red';
-    ctx.beginPath();
-    ctx.arc(canvas.width/2, canvas.height/2, schwarzschildRadius, 0, Math.PI * 2);
-    ctx.stroke();
-}
-
-function loop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawBlackHole();
-    particles.forEach(p => {
-        p.update();
-        p.draw();
-    });
-    requestAnimationFrame(loop);
-}
-loop();
-
-// UI bindings
-document.getElementById('massSlider').addEventListener('input', e => {
-    M = parseFloat(e.target.value);
-    document.getElementById('massVal').innerText = M;
-});
-document.getElementById('cSlider').addEventListener('input', e => {
-    C = parseFloat(e.target.value);
-    document.getElementById('cVal').innerText = C;
-});
-document.getElementById('dtSlider').addEventListener('input', e => {
-    timeStep = parseFloat(e.target.value);
-    document.getElementById('dtVal').innerText = timeStep;
-});
-document.getElementById('resetBtn').addEventListener('click', () => {
-    resetParticles();
-});
-</script>
+<!-- App script -->
+<script type="module" src="./app.js"></script>
 </body>
 </html>
