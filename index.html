@@ -1,57 +1,54 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Black Hole — 3D Ray-Bending (Three.js)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Black Hole — 3D Ray-Bending (Three.js ES modules)</title>
 
-<!-- Three.js (global) + OrbitControls (non-module) -->
-<script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three@0.155.0/examples/js/controls/OrbitControls.js"></script>
-
-<style>
-  html,body { height:100%; margin:0; background:#000; color:#ddd; font-family:Inter,system-ui,Arial,Helvetica,sans-serif; }
-  #canvas3d { position:fixed; inset:0; display:block; }
-  #ui {
-    position: fixed; left:12px; top:12px; z-index:50; background:rgba(12,12,14,0.86);
-    padding:12px; border-radius:8px; max-width:360px; font-size:13px;
-  }
-  label{ display:block; margin:8px 0 4px; color:#ddd; }
-  input[type=range]{ width:220px; }
-  .row{ display:flex; gap:8px; margin-top:8px; }
-  button{ padding:6px 10px; background:#222; color:#fff; border:0; border-radius:6px; cursor:pointer; }
-  footer{ position:fixed; right:12px; bottom:12px; color:#aaa; font-size:12px; background:rgba(0,0,0,0.45); padding:8px 10px; border-radius:8px; }
-  @media (max-width:520px){ #ui { left:50%; transform:translateX(-50%); top:8px; } }
-</style>
+  <style>
+    html,body { height:100%; margin:0; background:#000; color:#ddd; font-family:Inter,system-ui,Arial,Helvetica,sans-serif; }
+    #canvas3d { position:fixed; inset:0; display:block; }
+    #ui {
+      position: fixed; left:12px; top:12px; z-index:50; background:rgba(12,12,14,0.86);
+      padding:12px; border-radius:8px; max-width:360px; font-size:13px;
+    }
+    label{ display:block; margin:8px 0 4px; color:#ddd; }
+    input[type=range]{ width:220px; }
+    .row{ display:flex; gap:8px; margin-top:8px; }
+    button{ padding:6px 10px; background:#222; color:#fff; border:0; border-radius:6px; cursor:pointer; }
+    footer{ position:fixed; right:12px; bottom:12px; color:#aaa; font-size:12px; background:rgba(0,0,0,0.45); padding:8px 10px; border-radius:8px; }
+    @media (max-width:520px){ #ui { left:50%; transform:translateX(-50%); top:8px; } }
+  </style>
 </head>
 <body>
-<canvas id="canvas3d"></canvas>
+  <canvas id="canvas3d"></canvas>
 
-<div id="ui" aria-label="controls">
-  <div style="font-weight:600; color:#fff; margin-bottom:6px;">Black Hole — 3D Ray-Bending</div>
+  <div id="ui" aria-label="controls">
+    <div style="font-weight:600; color:#fff; margin-bottom:6px;">Black Hole — 3D Ray-Bending</div>
 
-  <label>Black Hole Mass: <span id="massVal">1000</span></label>
-  <input id="massSlider" type="range" min="200" max="5000" step="50" value="1000">
+    <label>Black Hole Mass: <span id="massVal">1000</span></label>
+    <input id="massSlider" type="range" min="200" max="5000" step="50" value="1000">
 
-  <label>Speed of Light (sim): <span id="cVal">15</span></label>
-  <input id="cSlider" type="range" min="5" max="60" step="1" value="15">
+    <label>Speed of Light (sim): <span id="cVal">15</span></label>
+    <input id="cSlider" type="range" min="5" max="60" step="1" value="15">
 
-  <label>Integration Steps (quality): <span id="stepsVal">96</span></label>
-  <input id="stepsSlider" type="range" min="16" max="256" step="8" value="96">
+    <label>Integration Steps (quality): <span id="stepsVal">96</span></label>
+    <input id="stepsSlider" type="range" min="16" max="256" step="8" value="96">
 
-  <label>Accretion Disk</label>
-  <div class="row">
-    <button id="toggleDisk">Toggle Disk</button>
-    <button id="resetCamera">Reset Camera</button>
+    <label>Accretion Disk</label>
+    <div class="row">
+      <button id="toggleDisk">Hide Disk</button>
+      <button id="resetCamera">Reset Camera</button>
+    </div>
+
+    <div style="margin-top:8px; font-size:12px; color:#bbb;">
+      Tip: orbit the camera with mouse (drag), zoom with wheel. Lower "steps" for mobile/performance.
+    </div>
   </div>
 
-  <div style="margin-top:8px; font-size:12px; color:#bbb;">
-    Tip: orbit the camera with mouse (drag), zoom with wheel. Lower "steps" for mobile/performance.
-  </div>
-</div>
+  <footer>Use mouse to orbit • Shader-based ray-marching (visual approximation)</footer>
 
-<footer>Use mouse to orbit • Shader-based ray-marching (approx.)</footer>
-
-<script type="module" src="./app.js"></script>
+  <!-- ES-module app script -->
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
